@@ -37,7 +37,7 @@ script.dir <- file.path(project.dir, "R")
 
 # Source modular scripts
 source(file.path(script.dir, "data_processing.R"), local = TRUE)
-#source(file.path(script.dir, "plot.R"), local = TRUE)
+source(file.path(script.dir, "create_excel.R"), local = TRUE)
 
 ui <- dashboardPage(
     dashboardHeader(title = "Analyse des fluides - La Gaillarde"),
@@ -69,7 +69,7 @@ ui <- dashboardPage(
                 br(),
                 fluidRow(
                   column(6, actionButton("process", "Lancer l'analyse", class = "btn-primary btn-lg", width = "100%")),
-                  column(6, downloadButton("download_data", "Télécharger les résultats", class = "btn-success btn-lg", width = "100%"))
+                  column(6, downloadButton("download_all", "Télécharger les résultats complets", class = "btn-success btn-lg", width = "100%"))
                 ),
                 
                 br(),
@@ -157,14 +157,41 @@ server <- function(input, output, session) {
   })
   
   # --- Download handler
-  output$download_data <- downloadHandler(
-    filename = function() {
-      paste0("2025_export_aggregation_energies_consommees_", Sys.Date(), ".xlsx")
-    },
-    content = function(file) {
-      export_energy_results(processed_data(), file)
-    }
-  )
+  output$download_all <- downloadHandler(
+      filename = function() {
+        paste0("Analyse_fluides_", Sys.Date(), ".zip")
+      },
+      content = function(file) {
+        req(processed_data())
+        data <- processed_data()
+        # Create temporary Excel files
+        tmp_dir  <- tempdir()
+        agg_path <- file.path(tmp_dir, "2025_export_aggregation_energies_consommees.xlsx")
+        stats_path <- file.path(tmp_dir, "2025_export_stats_energies_consommees.xlsx")
+        
+        # Write Excel files
+        writexl::write_xlsx(list(
+          Elect  = data$myconso_elec2,
+          Gaz    = data$myconso_gaz2,
+          Eau    = data$myconso_eau2,
+          FOD    = data$myconso_fod2,
+          Reseau = data$myconso_reseau2
+        ), agg_path)
+        
+        writexl::write_xlsx(list(
+          `Par Batiments`          = data$myconso_parbat,
+          `Par Unites`             = data$myconso_parunite,
+          `Par batiment et unites` = data$myconso_parbatunite
+        ), stats_path)
+        
+        # Zip them
+        zip::zipr(
+          zipfile = file,
+          files   = c(agg_path, stats_path)
+        )
+      }
+    )
+  
   # --- Display any analysis errors in the UI
   output$error_box <- renderUI({
     req(analysis_error())
@@ -177,22 +204,21 @@ server <- function(input, output, session) {
     )
   })
   
-  # --- Plot rendering
-  output$energy_plotly <- renderPlotly({
-    req(processed_data())
-    ggplotly(plot_energy_by_type(processed_data()))
-  })
-  
-  output$time_series_plot <- renderPlot({
-    req(processed_data())
-    plot_time_series(processed_data())
-  })
-  
-  output$building_plot <- renderPlotly({
-    req(processed_data())
-    ggplotly(plot_building_distribution(processed_data()))
-  })
+#   # --- Plot rendering
+#   output$energy_plotly <- renderPlotly({
+#     req(processed_data())
+#     ggplotly(plot_energy_by_type(processed_data()))
+#   })
+#   
+#   output$time_series_plot <- renderPlot({
+#     req(processed_data())
+#     plot_time_series(processed_data())
+#   })
+#   
+#   output$building_plot <- renderPlotly({
+#     req(processed_data())
+#     ggplotly(plot_building_distribution(processed_data()))
+#   })
 }
-
 
 shinyApp(ui, server)
