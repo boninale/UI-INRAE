@@ -2,6 +2,42 @@
 # Application Shiny : Analyse des fluides - Centre Occitanie Montpellier
 # Basée sur le notebook de N. Hilgert et I. Sanchez (INRAE MISTEA)
 # ============================================================
+library(shiny)
+library(shinydashboard)
+library(plotly)
+library(readxl)
+library(writexl)
+library(dplyr)
+library(shinyjs)
+
+# --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
+
+
+# Detect machine-specific path
+nodename <- Sys.info()[["nodename"]]
+
+if (nodename == "MISTEA-PRUNUS") {
+  project.dir <- "C:/Users/sanchez/Documents/INRA MISTEA/analyse_fluides_mtp"
+} else if (nodename == "mistea-sureau") {
+  project.dir <- "/home/sanchezi/Documents/INRA/UMR MISTEA/analyse_fluides_mtp"
+} else if (nodename == "MISTEA-ABELIA") {
+  project.dir <- "C:/Users/hilgert.MTP/Documents/NadineMaia2021/labo/cr/UMR/GESTION/UMRadmin/2025/FluidesCentre/analyse_fluides_mtp"
+} else {
+  project.dir <- "/Users/abonin/Desktop/Etude Jema"
+}
+
+# Validate
+if (!file.exists(project.dir)) {
+  stop(paste("Project directory not found:", project.dir))
+}
+
+# Define subpaths
+data.dir   <- file.path(project.dir, "data")
+script.dir <- file.path(project.dir, "R")
+
+# Source modular scripts
+source(file.path(script.dir, "data_processing.R"), local = TRUE)
+#source(file.path(script.dir, "plot.R"), local = TRUE)
 
 ui <- dashboardPage(
     dashboardHeader(title = "Analyse des fluides - La Gaillarde"),
@@ -73,42 +109,6 @@ ui <- dashboardPage(
 #               Server 
 # =========================================
 server <- function(input, output, session) {
-  library(shiny)
-  library(shinydashboard)
-  library(plotly)
-  library(readxl)
-  library(writexl)
-  library(dplyr)
-  library(shinyjs)
-  
-  # --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
-  
-  
-  # Detect machine-specific path
-  nodename <- Sys.info()[["nodename"]]
-  
-  if (nodename == "MISTEA-PRUNUS") {
-    project.dir <- "C:/Users/sanchez/Documents/INRA MISTEA/analyse_fluides_mtp"
-  } else if (nodename == "mistea-sureau") {
-    project.dir <- "/home/sanchezi/Documents/INRA/UMR MISTEA/analyse_fluides_mtp"
-  } else if (nodename == "MISTEA-ABELIA") {
-    project.dir <- "C:/Users/hilgert.MTP/Documents/NadineMaia2021/labo/cr/UMR/GESTION/UMRadmin/2025/FluidesCentre/analyse_fluides_mtp"
-  } else {
-    project.dir <- "/Users/abonin/Desktop/Etude Jema"
-  }
-  
-  # Validate
-  if (!file.exists(project.dir)) {
-    stop(paste("Project directory not found:", project.dir))
-  }
-  
-  # Define subpaths
-  data.dir   <- file.path(project.dir, "data")
-  script.dir <- file.path(project.dir, "R")
-  
-  # Source modular scripts
-  source(file.path(script.dir, "data_processing.R"), local = TRUE)
-  #source(file.path(script.dir, "plot.R"), local = TRUE)
   
   # Reactive store for processed data
   processed_data <- reactiveVal(NULL)
