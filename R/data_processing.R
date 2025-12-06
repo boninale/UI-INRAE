@@ -1,18 +1,21 @@
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readxl)
+library(DT)
+
+project.dir <- getwd()
+source(paste0(script.dir,"/data_standardisation.R"))
+
 run_energy_analysis <- function(etat_path,
                                 occup_path,
                                 conso_path,
-                                ct_edf=0.09,
-                                ct_gaz=0.07,
-                                ct_fod=0.32,
-                                ct_eau=3.5,
-                                ct_reseau=0.07) {
-  # Load required packages locally to ensure function independence
-  library(dplyr)
-  library(tidyr)
-  library(stringr)
-  library(readxl)
-  library(DT)
-  print('First print early in function')
+                                ct_edf  = 0.09,
+                                ct_gaz  = 0.07,
+                                ct_fod  = 0.32,
+                                ct_eau  = 3.5,
+                                ct_reseau = 0.07) {
+  
   # Importation des données
   ## fichier Etat énergétique des batiments --- 'La Gaillarde.xlsx'
 
@@ -36,9 +39,9 @@ run_energy_analysis <- function(etat_path,
     na = c("ND", "NA")
   ) |> 
     as.data.frame()
-  
-  myoccup<-myoccup[,-c(14,15)]
-  
+
+  myoccup <- myoccup[myoccup$`A SUPPRIMER` == "NON", -c(14, 15)]
+
   colnames(myoccup)<-c("Site","num_bat","Local","Nom_usuel_local","Libell_fichiersource/DIE",
                        "Referencefichiersource/DIE","Surface_sol","Unite",
                        "Nom_Tiers_accueillis","Nom_occupants",
@@ -158,21 +161,12 @@ run_energy_analysis <- function(etat_path,
     read_excel(path = conso_path, sheet = 5, na = c("ND", "NA"))
   )
   
-  names(myconso_elec)<-c("batiment","2020_Conso_kWh","2021_Conso_kWh",
-                         "2022_Conso_kWh","2023_Conso_kWh","2024_Conso_kWh",
-                         "Evol_2023/2024p","Evol_2023/2024","Evol_2021/2024","Remarques")
-  #Modifié elec car variables manquantes dans analyse
-  names(myconso_fod)<-c("batiment","2023_Conso_kWh","2024_Conso_kWh",
-                        "Evol_2023/2024","Evol_2023/2024p","Remarques")
-  names(myconso_gaz)<-c("batiment","2023_Conso_kWh","2024_Conso_kWh",
-                        "Evol_2023/2024","Evol_2023/2024p","Remarques")
-  names(myconso_reseau)<-c("batiment","NA","2023_Conso","2024_Conso",
-                           "Evol_2023/2024","Evol_2023/2024p","Remarques")
-  names(myconso_eau)<-c("batiment","2020_Conso","2021_Conso","2022_Conso",
-                        "2023_Conso","2024_Conso","Evol_2023/2024",
-                        "Evol_2023/2024p","Remarques","V10","V11")
-  
-  myconso_reseau<-myconso_reseau[,-2]
+  # Standardisation des données
+  myconso_elec <- standardise_table(myconso_elec)
+  myconso_eau <- standardise_table(myconso_eau)
+  myconso_gaz <- standardise_table(myconso_gaz)  
+  myconso_reseau <- standardise_table(myconso_reseau)
+  myconso_fod <- standardise_table(myconso_fod)
   
   ### data-management des données de consommations
   
@@ -232,11 +226,11 @@ run_energy_analysis <- function(etat_path,
     return(c(tp1,tp2))
   }
   
-  prix.elec  <-myprix(coef1=1.5,prix_kwh=ct_edf,input_col=myconso_elec$`2024_Conso_kWh`,input_pct=0.6)
-  prix.gaz   <-myprix(coef1=1.5,prix_kwh=ct_gaz,input_col=myconso_gaz$`2024_Conso_kWh`,input_pct=0.6)
-  prix.eau   <-myprix(coef1=1,  prix_kwh=ct_eau,input_col=myconso_eau$`2024_Conso`,input_pct=0.6)
-  prix.fod   <-myprix(coef1=1.5,prix_kwh=ct_fod,input_col=myconso_fod$`2024_Conso_kWh`,input_pct=0.6)
-  prix.reseau<-myprix(coef1=1.5,prix_kwh=ct_reseau,input_col=myconso_reseau$`2024_Conso`,input_pct=0.6)
+  prix.elec  <-myprix(coef1=1.5,prix_kwh=ct_edf,input_col=myconso_elec$`derniere_conso`,input_pct=0.6)
+  prix.gaz   <-myprix(coef1=1.5,prix_kwh=ct_gaz,input_col=myconso_gaz$`derniere_conso`,input_pct=0.6)
+  prix.eau   <-myprix(coef1=1,  prix_kwh=ct_eau,input_col=myconso_eau$`derniere_conso`,input_pct=0.6)
+  prix.fod   <-myprix(coef1=1.5,prix_kwh=ct_fod,input_col=myconso_fod$`derniere_conso`,input_pct=0.6)
+  prix.reseau<-myprix(coef1=1.5,prix_kwh=ct_reseau,input_col=myconso_reseau$`derniere_conso`,input_pct=0.6)
   
   # # prix électricité
   # prix.elec
@@ -263,39 +257,39 @@ run_energy_analysis <- function(etat_path,
   
   myconso_elec2<-myconso_elec2 %>%
     mutate(ratio_metre=metrage_unite_ajus / metrage_batiment,
-           conso_elec2024_kwh = `2024_Conso_kWh` * ratio_metre,
-           cout_elec2024=conso_elec2024_kwh * ct_edf * 1.5,
-           cout_par_m2=cout_elec2024 / metrage_unite_ajus,
-           cout_par_pers=cout_elec2024 / count_pers)
+           conso_elec = `derniere_conso` * ratio_metre,
+           cout_elec = conso_elec * ct_edf * 1.5,
+           cout_par_m2 = cout_elec / metrage_unite_ajus,
+           cout_par_pers = cout_elec / count_pers)
   
   myconso_gaz2<-myconso_gaz2 %>%
     mutate(ratio_metre=metrage_unite_ajus / metrage_batiment,
-           conso_gaz2024_kwh = `2024_Conso_kWh` * ratio_metre,
-           cout_gaz2024=conso_gaz2024_kwh * ct_gaz * 1.5,
-           cout_par_m2=cout_gaz2024 / metrage_unite_ajus,
-           cout_par_pers=cout_gaz2024 / count_pers)
+           conso_gaz = `derniere_conso` * ratio_metre,
+           cout_gaz = conso_gaz * ct_gaz * 1.5,
+           cout_par_m2=cout_gaz / metrage_unite_ajus,
+           cout_par_pers=cout_gaz / count_pers)
   
   myconso_eau2<-myconso_eau2 %>%
     mutate(ratio_metre=metrage_unite_ajus / metrage_batiment,
-           conso_eau2024 = `2024_Conso` * ratio_metre,
-           cout_eau2024=conso_eau2024 * ct_eau * 1,
-           cout_par_m2=cout_eau2024 / metrage_unite_ajus,
-           cout_par_pers=cout_eau2024 / count_pers)
+           conso_eau = `derniere_conso` * ratio_metre,
+           cout_eau=conso_eau * ct_eau * 1,
+           cout_par_m2=cout_eau / metrage_unite_ajus,
+           cout_par_pers=cout_eau / count_pers)
   
 
   myconso_fod2<-myconso_fod2 %>%
     mutate(ratio_metre=metrage_unite_ajus / metrage_batiment,
-           conso_fod2024 = `2024_Conso_kWh` * ratio_metre,
-           cout_fod2024=conso_fod2024 * ct_fod * 1.5,
-           cout_par_m2=cout_fod2024 / metrage_unite_ajus,
-           cout_par_pers=cout_fod2024 / count_pers)
+           conso_fod = `derniere_conso` * ratio_metre,
+           cout_fod=conso_fod * ct_fod * 1.5,
+           cout_par_m2=cout_fod / metrage_unite_ajus,
+           cout_par_pers=cout_fod / count_pers)
   
   myconso_reseau2<-myconso_reseau2 %>%
     mutate(ratio_metre=metrage_unite_ajus / metrage_batiment,
-           conso_reseau2024 = `2024_Conso` * ratio_metre,
-           cout_reseau2024=conso_reseau2024 * ct_reseau * 1.5,
-           cout_par_m2=cout_reseau2024 / metrage_unite_ajus,
-           cout_par_pers=cout_reseau2024 / count_pers)
+           conso_reseau = `derniere_conso` * ratio_metre,
+           cout_reseau=conso_reseau * ct_reseau * 1.5,
+           cout_par_m2=cout_reseau / metrage_unite_ajus,
+           cout_par_pers=cout_reseau / count_pers)
   
   ### -------------------
   # Plots consommation par unité
@@ -303,38 +297,38 @@ run_energy_analysis <- function(etat_path,
   
   # Consommation par batiment /m²
   myconso_elec_bat<- myconso_elec2 %>%
-    select(num_bat,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,`derniere_conso`,etat_energie,
            metrage_batiment) %>%
     distinct(num_bat,.keep_all = TRUE) %>%
-    mutate(conso_elec_m2_kWh=`2024_Conso_kWh` / metrage_batiment,
+    mutate(conso_elec_m2_kWh=`derniere_conso` / metrage_batiment,
            cout_elec=conso_elec_m2_kWh * ct_edf * 1.5)
   
   myconso_gaz_bat<- myconso_gaz2 %>%
-    select(num_bat,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,`derniere_conso`,etat_energie,
            metrage_batiment) %>%
     distinct(num_bat,.keep_all = TRUE) %>%
-    mutate(conso_gaz_m2_kWh=`2024_Conso_kWh` / metrage_batiment,
+    mutate(conso_gaz_m2_kWh=`derniere_conso` / metrage_batiment,
            cout_gaz=conso_gaz_m2_kWh * ct_gaz * 1.5)
   
   myconso_fod_bat<- myconso_fod2 %>%
-    select(num_bat,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,`derniere_conso`,etat_energie,
            metrage_batiment) %>%
     distinct(num_bat,.keep_all = TRUE) %>%
-    mutate(conso_fod_m2_kWh=`2024_Conso_kWh` / metrage_batiment,
+    mutate(conso_fod_m2_kWh=`derniere_conso` / metrage_batiment,
            cout_fod=conso_fod_m2_kWh * ct_fod * 1.5)
   
   myconso_eau_bat<- myconso_eau2 %>%
-    select(num_bat,`2024_Conso`,etat_energie,
+    select(num_bat,`derniere_conso`,etat_energie,
            metrage_batiment) %>%
     distinct(num_bat,.keep_all = TRUE) %>%
-    mutate(conso_eau_m2=`2024_Conso` / metrage_batiment,
+    mutate(conso_eau_m2=`derniere_conso` / metrage_batiment,
            cout_eau=conso_eau_m2 * ct_eau * 1)
   
   myconso_reseau_bat<- myconso_reseau2 %>%
-    select(num_bat,`2024_Conso`,etat_energie,
+    select(num_bat,`derniere_conso`,etat_energie,
            metrage_batiment) %>%
     distinct(num_bat,.keep_all = TRUE) %>%
-    mutate(conso_reseau_m2=`2024_Conso` / metrage_batiment,
+    mutate(conso_reseau_m2=`derniere_conso` / metrage_batiment,
            cout_reseau=conso_reseau_m2 * ct_reseau * 1.5)
   
   myconso_parbat <- full_join(select(myconso_elec_bat,num_bat,etat_energie,
@@ -354,9 +348,9 @@ run_energy_analysis <- function(etat_path,
   
   # Consommation par unité /m²
   myconso_elec_unite<- myconso_elec2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_elec_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_elec_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_elec=conso_elec_m2_kWh * ct_edf * 1.5) %>%
     group_by(Unite) %>%
     summarise(conso_elec_m2_kWh=sum(conso_elec_m2_kWh),
@@ -364,9 +358,9 @@ run_energy_analysis <- function(etat_path,
     na.omit()
   
   myconso_gaz_unite<- myconso_gaz2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_gaz_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_gaz_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_gaz=conso_gaz_m2_kWh * ct_gaz * 1.5) %>%
     group_by(Unite) %>%
     summarise(conso_gaz_m2_kWh=sum(conso_gaz_m2_kWh),
@@ -374,9 +368,9 @@ run_energy_analysis <- function(etat_path,
     na.omit()
   
   myconso_fod_unite<- myconso_fod2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_fod_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_fod_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_fod=conso_fod_m2_kWh * ct_fod * 1.5) %>%
     group_by(Unite) %>%
     summarise(conso_fod_m2_kWh=sum(conso_fod_m2_kWh),
@@ -385,9 +379,9 @@ run_energy_analysis <- function(etat_path,
     na.omit()
   
   myconso_eau_unite<- myconso_eau2 %>%
-    select(num_bat,Unite,`2024_Conso`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_eau_m2=`2024_Conso` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_eau_m2=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_eau=conso_eau_m2 * ct_eau * 1) %>%
     group_by(Unite) %>%
     summarise(conso_eau_m2=sum(conso_eau_m2),
@@ -395,9 +389,9 @@ run_energy_analysis <- function(etat_path,
     na.omit()
   
   myconso_reseau_unite<- myconso_reseau2 %>%
-    select(num_bat,Unite,`2024_Conso`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_reseau_m2=`2024_Conso` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_reseau_m2=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_reseau=conso_reseau_m2 * ct_reseau * 1.5) %>%
     group_by(Unite) %>%
     summarise(conso_reseau_m2=sum(conso_reseau_m2),
@@ -449,45 +443,45 @@ run_energy_analysis <- function(etat_path,
   
   # Consommation par batiment et unité /m²
   myconso_elec_batu<- myconso_elec2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_elec_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_elec_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_elec=conso_elec_m2_kWh * ct_edf * 1.5) %>%
     group_by(num_bat,Unite) %>%
     summarise(conso_elec_m2_kWh=sum(conso_elec_m2_kWh),
               cout_elec=sum(cout_elec))
   
   myconso_gaz_batu<- myconso_gaz2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_gaz_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_gaz_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_gaz=conso_gaz_m2_kWh * ct_gaz * 1.5) %>%
     group_by(num_bat,Unite) %>%
     summarise(conso_gaz_m2_kWh=sum(conso_gaz_m2_kWh),
               cout_gaz=sum(cout_gaz))
   
   myconso_fod_batu<- myconso_fod2 %>%
-    select(num_bat,Unite,`2024_Conso_kWh`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_fod_m2_kWh=`2024_Conso_kWh` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_fod_m2_kWh=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_fod=conso_fod_m2_kWh * ct_fod * 1.5) %>%
     group_by(num_bat,Unite) %>%
     summarise(conso_fod_m2_kWh=sum(conso_fod_m2_kWh),
               cout_fod=sum(cout_fod))
   
   myconso_eau_batu<- myconso_eau2 %>%
-    select(num_bat,Unite,`2024_Conso`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_eau_m2=`2024_Conso` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_eau_m2=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_eau=conso_eau_m2 * ct_eau * 1) %>%
     group_by(num_bat,Unite) %>%
     summarise(conso_eau_m2=sum(conso_eau_m2),
               cout_eau=sum(cout_eau))
   
   myconso_reseau_batu<- myconso_reseau2 %>%
-    select(num_bat,Unite,`2024_Conso`,etat_energie,
+    select(num_bat,Unite,`derniere_conso`,etat_energie,
            metrage_unite_ajus,metrage_batiment,count_pers) %>%
-    mutate(conso_reseau_m2=`2024_Conso` * metrage_unite_ajus / metrage_batiment,
+    mutate(conso_reseau_m2=`derniere_conso` * metrage_unite_ajus / metrage_batiment,
            cout_reseau=conso_reseau_m2 * ct_reseau * 1.5) %>%
     group_by(num_bat,Unite) %>%
     summarise(conso_reseau_m2=sum(conso_reseau_m2),
