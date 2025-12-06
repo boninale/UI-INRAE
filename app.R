@@ -2,50 +2,21 @@
 # Application Shiny : Analyse des fluides - Centre Occitanie Montpellier
 # Basée sur le notebook de N. Hilgert et I. Sanchez (INRAE MISTEA)
 # ============================================================
-library(shiny)
-library(shinydashboard)
 library(plotly)
 library(readxl)
 library(writexl)
 library(dplyr)
 library(shinyjs)
-
-# --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
-
-
-# Detect machine-specific path
-nodename <- Sys.info()[["nodename"]]
-
-if (nodename == "MISTEA-PRUNUS") {
-  project.dir <- "C:/Users/sanchez/Documents/INRA MISTEA/analyse_fluides_mtp"
-} else if (nodename == "mistea-sureau") {
-  project.dir <- "/home/sanchezi/Documents/INRA/UMR MISTEA/analyse_fluides_mtp"
-} else if (nodename == "MISTEA-ABELIA") {
-  project.dir <- "C:/Users/hilgert.MTP/Documents/NadineMaia2021/labo/cr/UMR/GESTION/UMRadmin/2025/FluidesCentre/analyse_fluides_mtp"
-} else {
-  project.dir <- "/Users/abonin/Desktop/Etude Jema"
-}
-
-# Validate
-if (!file.exists(project.dir)) {
-  stop(paste("Project directory not found:", project.dir))
-}
-
-# Define subpaths
-data.dir   <- file.path(project.dir, "data")
-script.dir <- file.path(project.dir, "R")
-
-# Source modular scripts
-source(file.path(script.dir, "data_processing.R"), local = TRUE)
-source(file.path(script.dir, "create_excel.R"), local = TRUE)
+library(shiny)
+library(shinydashboard)
 
 ui <- dashboardPage(
     dashboardHeader(title = "Analyse des fluides - La Gaillarde"),
     
     dashboardSidebar(
       sidebarMenu(
-        menuItem("Tableaux de bord", tabName = "plots", icon = icon("chart-bar")),
-        menuItem("Fichiers & Export", tabName = "files", icon = icon("folder-open"))
+        menuItem("Fichiers & Export", tabName = "files", icon = icon("folder-open")),
+        menuItem("Tableaux de bord", tabName = "plots", icon = icon("chart-bar"))
       )
     ),
     
@@ -59,17 +30,41 @@ ui <- dashboardPage(
           tabName = "files",
           fluidPage(
             div(class = "container", style = "max-width:900px; margin: 40px auto;",
-                h2("Chargement des fichiers", style = "text-align:center; font-weight:700; margin-bottom:30px;"),
                 
-                # File inputs on separate lines
-                fileInput("file_etat", "Importer : La Gaillarde.xlsx", accept = ".xlsx", width = "100%"),
-                fileInput("file_occup", "Importer : 2025-Enquete occupation-MISTEA.xlsx", accept = ".xlsx", width = "100%"),
-                fileInput("file_conso", "Importer : Synthèse Consommations.xlsx", accept = ".xlsx", width = "100%"),
+                h2("Chargement des fichiers",
+                   style = "text-align:center; font-weight:700; margin-bottom:30px;"),
+                
+                # File inputs
+                fileInput("file_etat",  "Importer : La Gaillarde.xlsx",
+                          accept = ".xlsx", width = "100%"),
+                fileInput("file_occup", "Importer : 2025-Enquete occupation-MISTEA.xlsx",
+                          accept = ".xlsx", width = "100%"),
+                fileInput("file_conso", "Importer : Synthèse Consommations.xlsx",
+                          accept = ".xlsx", width = "100%"),
                 
                 br(),
+                
+                #   Paramètres de calcul
+                h3("Paramètres de calcul", style = "font-weight:600; margin-top:20px;"),
+                
                 fluidRow(
-                  column(6, actionButton("process", "Lancer l'analyse", class = "btn-primary btn-lg", width = "100%")),
-                  column(6, downloadButton("download_all", "Télécharger les résultats complets", class = "btn-success btn-lg", width = "100%"))
+                  column(4, numericInput("ct_edf",    "Coût électricité (€/kWh)",   value = 0.09, step = 0.01)),
+                  column(4, numericInput("ct_gaz",    "Coût gaz (€/kWh)",           value = 0.07, step = 0.01)),
+                  column(4, numericInput("ct_fod",    "Coût FOD (€/L)",             value = 0.32, step = 0.01))
+                ),
+                
+                fluidRow(
+                  column(4, numericInput("ct_eau",    "Coût eau (€/m³)",            value = 3.50, step = 0.01)),
+                  column(4, numericInput("ct_reseau", "Coût réseau chaleur (€/kWh)",value = 0.07, step = 0.01))
+                ),
+                
+                br(),
+                
+                fluidRow(
+                  column(6, actionButton("process", "Lancer l'analyse",
+                                         class = "btn-primary btn-lg", width = "100%")),
+                  column(6, downloadButton("download_all", "Télécharger les résultats complets",
+                                           class = "btn-success btn-lg", width = "100%"))
                 ),
                 
                 br(),
@@ -78,6 +73,7 @@ ui <- dashboardPage(
             )
           )
         ),
+        
         
         # --- Plots tab ---
         tabItem(
@@ -109,6 +105,35 @@ ui <- dashboardPage(
 #               Server 
 # =========================================
 server <- function(input, output, session) {
+  # --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
+  
+  # Detect machine-specific path
+  nodename <- Sys.info()[["nodename"]]
+  
+  if (nodename == "MISTEA-PRUNUS") {
+    project.dir <- "C:/Users/sanchez/Documents/INRA MISTEA/analyse_fluides_mtp"
+  } else if (nodename == "mistea-sureau") {
+    project.dir <- "/home/sanchezi/Documents/INRA/UMR MISTEA/analyse_fluides_mtp"
+  } else if (nodename == "MISTEA-ABELIA") {
+    project.dir <- "C:/Users/hilgert.MTP/Documents/NadineMaia2021/labo/cr/UMR/GESTION/UMRadmin/2025/FluidesCentre/analyse_fluides_mtp"
+  } else {
+    project.dir <- "/Users/abonin/Desktop/Etude Jema"
+  }
+  
+  # Validate
+  if (!file.exists(project.dir)) {
+    stop(paste("Project directory not found:", project.dir))
+  }
+  
+  # Define subpaths
+  data.dir   <- file.path(project.dir, "data")
+  script.dir <- file.path(project.dir, "R")
+  
+  # Source modular scripts
+  print("Before sourcing script")
+  invisible(source(file.path(script.dir, "data_processing.R"), local = TRUE))
+  print("After Sourcing script")
+  # source(file.path(script.dir, "create_excel.R"), local = TRUE)
   
   # Reactive store for processed data
   processed_data <- reactiveVal(NULL)
@@ -123,7 +148,6 @@ server <- function(input, output, session) {
                     !is.null(input$file_conso))
     )
   })
-  
   # --- Run analysis when button pressed
   observeEvent(input$process, {
     
@@ -138,7 +162,12 @@ server <- function(input, output, session) {
         result <- run_energy_analysis(
           etat_path  = input$file_etat$datapath,
           occup_path = input$file_occup$datapath,
-          conso_path = input$file_conso$datapath
+          conso_path = input$file_conso$datapath,
+          ct_edf     = input$ct_edf,
+          ct_gaz     = input$ct_gaz,
+          ct_fod     = input$ct_fod,
+          ct_eau     = input$ct_eau,
+          ct_reseau  = input$ct_reseau
         )
       ))
       

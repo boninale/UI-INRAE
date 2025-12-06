@@ -4,7 +4,7 @@ project.dir <- "/Users/abonin/Desktop/Etude Jema"
 stopifnot(file.exists(project.dir))
 
 
-source(paste0(project.dir,"/R/data_processing.R"))
+# source(paste0(project.dir,"/R/data_processing.R"))
 
 data.dir <- paste0(project.dir, "/data")
 script.dir <- paste0(project.dir, "/R")

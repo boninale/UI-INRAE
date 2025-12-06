@@ -1,13 +1,19 @@
-run_energy_analysis <- function(etat_path, occup_path, conso_path) {
+run_energy_analysis <- function(etat_path,
+                                occup_path,
+                                conso_path,
+                                ct_edf=0.09,
+                                ct_gaz=0.07,
+                                ct_fod=0.32,
+                                ct_eau=3.5,
+                                ct_reseau=0.07) {
   # Load required packages locally to ensure function independence
   library(dplyr)
   library(tidyr)
   library(stringr)
   library(readxl)
   library(DT)
-  
+  print('First print early in function')
   # Importation des données
-
   ## fichier Etat énergétique des batiments --- 'La Gaillarde.xlsx'
 
   # Import the first sheet
@@ -35,7 +41,7 @@ run_energy_analysis <- function(etat_path, occup_path, conso_path) {
   
   colnames(myoccup)<-c("Site","num_bat","Local","Nom_usuel_local","Libell_fichiersource/DIE",
                        "Referencefichiersource/DIE","Surface_sol","Unite",
-                       "Nom Tiers accueillis_31/03/2024","Nom_occupants",
+                       "Nom_Tiers_accueillis","Nom_occupants",
                        "Nombre_unites","Surface_ajus","Typologie UMR")
 
   # Comptage du nombre de personnes par bureau à partir de la colonne "Nom_occupants"
@@ -225,13 +231,6 @@ run_energy_analysis <- function(etat_path, occup_path, conso_path) {
     tp2<-tp1 * input_pct
     return(c(tp1,tp2))
   }
-  
-  # Calcul prix total élec
-  ct_edf<-0.09
-  ct_gaz<-0.07
-  ct_fod<-0.32
-  ct_eau<-3.5
-  ct_reseau<-0.07
   
   prix.elec  <-myprix(coef1=1.5,prix_kwh=ct_edf,input_col=myconso_elec$`2024_Conso_kWh`,input_pct=0.6)
   prix.gaz   <-myprix(coef1=1.5,prix_kwh=ct_gaz,input_col=myconso_gaz$`2024_Conso_kWh`,input_pct=0.6)
@@ -552,6 +551,7 @@ run_energy_analysis <- function(etat_path, occup_path, conso_path) {
   # somme du cout de toutes les énergies par batiment et unite
   myconso_parbatunite <- myconso_parbatunite %>%
     mutate(cout_global_batunite=rowSums(across(starts_with("cout")),na.rm=TRUE))
+  print("Last print inside function")
   
   # Exports des fichiers avec les jointures
   return(
