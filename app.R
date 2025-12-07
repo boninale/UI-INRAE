@@ -15,8 +15,8 @@ library(shinyjs)
 library(shiny)
 library(shinydashboard)
 library(ggplot2)
+library(rsconnect)
 
-project.dir <- getwd()
 
 # Validate
 if (!file.exists(project.dir)) {
@@ -24,8 +24,8 @@ if (!file.exists(project.dir)) {
 }
 
 # Define subpaths
-data.dir   <- file.path(project.dir, "data")
-script.dir <- file.path(project.dir, "R")
+data.dir   <- "data"
+script.dir <- "R"
 
 # Source modular scripts
 invisible(source(file.path(script.dir, "data_processing.R"), local = TRUE))
