@@ -545,8 +545,7 @@ run_energy_analysis <- function(etat_path,
   # somme du cout de toutes les énergies par batiment et unite
   myconso_parbatunite <- myconso_parbatunite %>%
     mutate(cout_global_batunite=rowSums(across(starts_with("cout")),na.rm=TRUE))
-  print("Last print inside function")
-  
+
   # Exports des fichiers avec les jointures
   return(
     list(

@@ -2,6 +2,11 @@
 # Application Shiny : Analyse des fluides - Centre Occitanie Montpellier
 # Basée sur le notebook de N. Hilgert et I. Sanchez (INRAE MISTEA)
 # ============================================================
+
+
+# --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
+rm(list=objects())
+
 library(plotly)
 library(readxl)
 library(writexl)
@@ -9,21 +14,9 @@ library(dplyr)
 library(shinyjs)
 library(shiny)
 library(shinydashboard)
+library(ggplot2)
 
-# --- INITIALIZATION (same as the Rmd file) ------------------------------------------------------
-
-# Detect machine-specific path
-nodename <- Sys.info()[["nodename"]]
-
-if (nodename == "MISTEA-PRUNUS") {
-  project.dir <- "C:/Users/sanchez/Documents/INRA MISTEA/analyse_fluides_mtp"
-} else if (nodename == "mistea-sureau") {
-  project.dir <- "/home/sanchezi/Documents/INRA/UMR MISTEA/analyse_fluides_mtp"
-} else if (nodename == "MISTEA-ABELIA") {
-  project.dir <- "C:/Users/hilgert.MTP/Documents/NadineMaia2021/labo/cr/UMR/GESTION/UMRadmin/2025/FluidesCentre/analyse_fluides_mtp"
-} else {
-  project.dir <- getwd()
-}
+project.dir <- getwd()
 
 # Validate
 if (!file.exists(project.dir)) {
@@ -35,10 +28,8 @@ data.dir   <- file.path(project.dir, "data")
 script.dir <- file.path(project.dir, "R")
 
 # Source modular scripts
-print("Before sourcing script")
 invisible(source(file.path(script.dir, "data_processing.R"), local = TRUE))
-print("After Sourcing script")
-# source(file.path(script.dir, "create_excel.R"), local = TRUE)
+invisible(source(file.path(script.dir, "plot.R"), local = TRUE))
 
 ui <- dashboardPage(
     dashboardHeader(title = "Analyse des fluides - La Gaillarde"),
@@ -65,13 +56,12 @@ ui <- dashboardPage(
                    style = "text-align:center; font-weight:700; margin-bottom:30px;"),
                 
                 # File inputs
-                fileInput("file_etat",  "Importer : La Gaillarde.xlsx",
+                fileInput("file_etat",  "Importer : La Gaillarde",
                           accept = ".xlsx", width = "100%"),
-                fileInput("file_occup", "Importer : 2025-Enquete occupation-MISTEA.xlsx",
+                fileInput("file_conso", "Importer : Synthèse Consommations",
                           accept = ".xlsx", width = "100%"),
-                fileInput("file_conso", "Importer : Synthèse Consommations.xlsx",
+                fileInput("file_occup", "Importer : Enquete occupation-MISTEA",
                           accept = ".xlsx", width = "100%"),
-                
                 br(),
                 
                 #   Paramètres de calcul
@@ -109,21 +99,51 @@ ui <- dashboardPage(
         tabItem(
           tabName = "plots",
           fluidPage(
-            h2("Visualisations des consommations", style = "text-align:center; margin-top:10px; margin-bottom:25px;"),
+            h2("Visualisations", style="text-align:center; margin-bottom:20px;"),
             
-            fluidRow(
-              box(title = "Consommation par énergie", width = 12, status = "primary", solidHeader = TRUE,
-                  plotlyOutput("energy_plotly", height = "500px"))
+            selectInput(
+              "resource_choice",
+              "Énergie :",
+              choices = c("Electricité" = "elec",
+                          "Gaz"         = "gaz",
+                          "FOD"         = "fod",
+                          "Eau"         = "eau",
+                          "Réseau"      = "reseau"),
+              width = "30%"
             ),
             
             fluidRow(
-              box(title = "Évolution temporelle", width = 12, status = "primary", solidHeader = TRUE,
-                  plotOutput("time_series_plot", height = "400px"))
+              box(
+                title = "Consommation totale par année",
+                width = 12,
+                solidHeader = TRUE,
+                status = "primary",
+                margin = 2,
+                div(
+                  style = "padding: 50px;",
+                  plotlyOutput("total_over_years", height = "400px")
+                )
+              )
             ),
             
             fluidRow(
-              box(title = "Répartition par bâtiment", width = 12, status = "primary", solidHeader = TRUE,
-                  plotlyOutput("building_plot", height = "400px"))
+              box(
+                title = "Dernière année – par bâtiment",
+                width = 12,
+                solidHeader = TRUE,
+                status = "primary",
+                plotlyOutput("by_building", height = "400px")
+              )
+            ),
+            
+            fluidRow(
+              box(
+                title = "Dernière année – par unité",
+                width = 12,
+                solidHeader = TRUE,
+                status = "primary",
+                plotlyOutput("by_unit", height = "400px")
+              )
             )
           )
         )
@@ -234,21 +254,86 @@ server <- function(input, output, session) {
     )
   })
   
-#   # --- Plot rendering
-#   output$energy_plotly <- renderPlotly({
-#     req(processed_data())
-#     ggplotly(plot_energy_by_type(processed_data()))
-#   })
-#   
-#   output$time_series_plot <- renderPlot({
-#     req(processed_data())
-#     plot_time_series(processed_data())
-#   })
-#   
-#   output$building_plot <- renderPlotly({
-#     req(processed_data())
-#     ggplotly(plot_building_distribution(processed_data()))
-#   })
-}
+  # --- Plot rendering
+  output$total_over_years <- renderPlotly({
+    req(processed_data())
+    req(input$resource_choice)
 
+    data_list <- processed_data()
+    table_name <- paste0("myconso_", input$resource_choice, "2")
+    df <- data_list[[table_name]]
+    req(df)
+
+    unit <- switch(input$resource_choice,
+                   elec = "kWh",
+                   gaz = "kWh",
+                   eau = "m3",
+                   fod = "kWh",
+                   reseau = "")
+
+    year_cols <- grep("^\\d{4}_conso$", names(df), value = TRUE)
+    req(length(year_cols) > 0)
+
+    p <- generate_yearly_plot(df, year_cols, unit)
+    plotly::ggplotly(p) |>
+      plotly::config(displayModeBar = TRUE)
+  })
+
+  # --- Plot rendering: Consumption by building ---
+  output$by_building <- renderPlotly({
+    req(processed_data())
+    req(input$resource_choice)
+
+    data_list <- processed_data()
+    df <- data_list$myconso_parbatunite
+    req(df)
+
+    resource_col <- switch(input$resource_choice,
+                           elec = "conso_elec_m2_kWh",
+                           gaz = "conso_gaz_m2_kWh",
+                           eau = "conso_eau_m2",
+                           fod = "conso_fod_m2_kWh",
+                           reseau = "conso_reseau_m2")
+    unit <- switch(input$resource_choice,
+                   elec = "kWh",
+                   gaz = "kWh",
+                   eau = "m3",
+                   fod = "kWh",
+                   reseau = "")
+    req(resource_col %in% names(df))
+
+    p <- generate_building_plot(df, resource_col, unit)
+    plotly::ggplotly(p) |>
+      plotly::config(displayModeBar = TRUE)
+  })
+
+  # --- Plot rendering: Consumption by unit ---
+  output$by_unit <- renderPlotly({
+    req(processed_data())
+    req(input$resource_choice)
+
+    data_list <- processed_data()
+    df <- data_list$myconso_parbatunite
+    req(df)
+
+    resource_col <- switch(input$resource_choice,
+                           elec = "conso_elec_m2_kWh",
+                           gaz = "conso_gaz_m2_kWh",
+                           eau = "conso_eau_m2",
+                           fod = "conso_fod_m2_kWh",
+                           reseau = "conso_reseau_m2")
+    unit <- switch(input$resource_choice,
+                   elec = "kWh",
+                   gaz = "kWh",
+                   eau = "m3",
+                   fod = "kWh",
+                   reseau = "")
+    req(resource_col %in% names(df))
+
+    p <- generate_unit_plot(df, resource_col, unit)
+    plotly::ggplotly(p) |>
+      plotly::config(displayModeBar = TRUE)
+  })
+  
+}
 shinyApp(ui, server)

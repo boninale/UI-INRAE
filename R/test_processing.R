@@ -1,3 +1,4 @@
+library(ggplot2)
 rm(list=objects())
 
 project.dir <- getwd()
@@ -32,30 +33,12 @@ myconso_fod <- as.data.frame(
   read_excel(path = conso_path, sheet = 5, na = c("ND", "NA"))
 )
 
-print("Elec :")
-print(names(myconso_elec))
+
 myconso_elec <- standardise_table(myconso_elec)
-print(names(myconso_elec))
-
-print("Eau :")
-print(names(myconso_eau))
 myconso_eau <- standardise_table(myconso_eau)
-print(names(myconso_eau))
-
-print("Gaz :")
-print(names(myconso_gaz))
 myconso_gaz <- standardise_table(myconso_gaz)
-print(names(myconso_gaz))
-
-print("Reseau :")
-print(names(myconso_reseau))
 myconso_reseau <- standardise_table(myconso_reseau)
-print(names(myconso_reseau))
-
-print("Fod :")
-print(names(myconso_fod))
 myconso_fod <- standardise_table(myconso_fod)
-print(names(myconso_fod))
 
 
 
