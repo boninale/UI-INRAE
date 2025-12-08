@@ -1,21 +1,10 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # README — Application d’Analyse des Consommations du Campus
 
 ## 1. Présentation
 
-Application R Shiny destinée à analyser et visualiser les données de
-consommation énergétique du campus. Elle reproduit les traitements du
-notebook R `2025_Analyse_Fluide_MTP.qmd`, intègre une standardisation
-automatique des fichiers, et offre une interface web pour importer les
-données, paramétrer les prix unitaires et consulter les résultats.
+Application R Shiny destinée à analyser et visualiser les données de consommation énergétique du campus. Elle reproduit les traitements du notebook R `2025_Analyse_Fluide_MTP.qmd`, intègre une standardisation automatique des fichiers, et offre une interface web pour importer les données, paramétrer les prix unitaires et consulter les résultats.
 
-Démo en ligne :
-<https://boninale.shinyapps.io/Analyse-Consommation-Institut-Agro/>
+Démo en ligne : <https://boninale.shinyapps.io/Analyse-Consommation-Institut-Agro/>
 
 ------------------------------------------------------------------------
 
@@ -41,8 +30,7 @@ Prérequis :
 
 -   R ≥ 4.2
 -   RStudio recommandé
--   Packages utilisés : shiny, tidyverse, readxl, lubridate, ggplot2,
-    etc.
+-   Packages utilisés : shiny, tidyverse, readxl, lubridate, ggplot2, etc.
 
 Installation :
 
@@ -63,23 +51,15 @@ Ou via RStudio : ouvrir `app.R` puis cliquer sur "Run App".
 
 ## 4. Standardisation automatique des données
 
-La normalisation est gérée par `data_standardisation.R`. Les règles
-appliquées à toute table importée sont :
+La normalisation est gérée par `data_standardisation.R`. Les règles appliquées à toute table importée sont :
 
 1.  La première colonne est forcée sous le nom `batiment`.
-2.  Toute colonne contenant une année + « conso » → `année_conso`.
-    Exemple : `Conso 2023 (kWh)` → `2023_conso`.
-3.  Colonnes contenant deux années sans symbole % →
-    `Evol_année1-année2`. Exemple : `Différence 2022 et 2023` →
-    `Evol_2022-2023`.
-4.  Colonnes contenant deux années et un symbole % →
-    `Evol_année1-année2_p`. Exemple : `Evol 2023/2024 en %` →
-    `Evol_2023-2024_p`.
-5.  Parmi les colonnes `*_conso`, celle dont l’année est la plus élevée
-    est dupliquée en fin de tableau sous le nom `derniere_conso`.
+2.  Toute colonne contenant une année + « conso » → `année_conso`. Exemple : `Conso 2023 (kWh)` → `2023_conso`.
+3.  Colonnes contenant deux années sans symbole % → `Evol_année1-année2`. Exemple : `Différence 2022 et 2023` → `Evol_2022-2023`.
+4.  Colonnes contenant deux années et un symbole % → `Evol_année1-année2_p`. Exemple : `Evol 2023/2024 en %` → `Evol_2023-2024_p`.
+5.  Parmi les colonnes `*_conso`, celle dont l’année est la plus élevée est dupliquée en fin de tableau sous le nom `derniere_conso`.
 
-Cette standardisation garantit la compatibilité avec des fichiers aux
-structures hétérogènes.
+Cette standardisation garantit la compatibilité avec des fichiers aux structures hétérogènes.
 
 ------------------------------------------------------------------------
 
@@ -87,11 +67,7 @@ structures hétérogènes.
 
 Le script `data_processing.R` :
 
-• importe et nettoie les fichiers, • applique le filtrage de l’onglet
-`Occupation` (suppression lorsque `A SUPPRIMER` ≠ "NON"), • prépare les
-données normalisées, • calcule les agrégats et indicateurs de
-consommation, • applique les prix unitaires définis dans l’interface, •
-génère les tableaux consolidés et les jeux de données finaux.
+• importe et nettoie les fichiers, • applique le filtrage de l’onglet `Occupation` (suppression lorsque `A SUPPRIMER` ≠ "NON"), • prépare les données normalisées, • calcule les agrégats et indicateurs de consommation, • applique les prix unitaires définis dans l’interface, • génère les tableaux consolidés et les jeux de données finaux.
 
 Chaque exécution produit un ensemble complet de sorties reproductibles.
 
@@ -101,12 +77,9 @@ Chaque exécution produit un ensemble complet de sorties reproductibles.
 
 Les graphiques sont générés via `plot.R` :
 
-• évolutions interannuelles des consommations, • comparaisons entre
-bâtiments, • représentations des variations absolues et en pourcentage,
-• graphiques consolidés pour le tableau de bord Shiny.
+• évolutions interannuelles des consommations, • comparaisons entre bâtiments, • représentations des variations absolues et en pourcentage, • graphiques consolidés pour le tableau de bord Shiny.
 
-Les figures apparaissent dans l’onglet "Tableaux de Bord" de
-l’application.
+Les figures apparaissent dans l’onglet "Tableaux de Bord" de l’application.
 
 ------------------------------------------------------------------------
 
@@ -128,8 +101,7 @@ Les journaux d’erreurs sont consultables dans l’interface ShinyApps.
 
 ## 8. Exemple d’utilisation
 
-1.  Déposer les fichiers d’entrée dans la section « Fichiers et Export
-    ».
+1.  Déposer les fichiers d’entrée dans la section « Fichiers et Export ».
 2.  Paramétrer les prix unitaires si nécessaire.
 3.  Lancer l’analyse.
 4.  Télécharger les résultats produits dans le répertoire dédié.

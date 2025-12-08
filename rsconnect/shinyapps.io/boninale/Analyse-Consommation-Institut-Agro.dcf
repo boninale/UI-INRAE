@@ -1,0 +1,10 @@
+name: Analyse-Consommation-Institut-Agro
+title:
+username: boninale
+account: boninale
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16261271
+bundleId: 11288040
+url: https://boninale.shinyapps.io/Analyse-Consommation-Institut-Agro/
+version: 1
