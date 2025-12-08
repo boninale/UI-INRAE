@@ -4,8 +4,9 @@ library(stringr)
 library(readxl)
 library(DT)
 
-project.dir <- getwd()
-source(paste0(script.dir,"/data_standardisation.R"))
+data.dir <- "data"
+script.dir <- "R"
+source(file.path(script.dir,"data_standardisation.R"))
 
 run_energy_analysis <- function(etat_path,
                                 occup_path,

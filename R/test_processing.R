@@ -1,19 +1,16 @@
 library(ggplot2)
 rm(list=objects())
 
-project.dir <- getwd()
-stopifnot(file.exists(project.dir))
 
-data.dir <- paste0(project.dir, "/data")
-script.dir <- paste0(project.dir, "/R")
-source(paste0(script.dir,"/data_processing.R"))
-source(paste0(script.dir,"/data_standardisation.R"))
+data.dir <- "data"
+script.dir <- "R"
+result.dir <- "Results"
+source(file.path(script.dir,"data_processing.R"))
+source(file.path(script.dir,"data_standardisation.R"))
 
-
-etat_path<- paste0(data.dir,"/La Gaillarde.xlsx")
-occup_path<- paste0(data.dir,"/","2025-Enquete occupation-MISTEA-20250709.xlsx")
-conso_path <- paste0(data.dir,"/","Synthèse evolutions Consommations  10-02-2025.xlsx")
-
+etat_path<- file.path(data.dir,"La Gaillarde.xlsx")
+occup_path<- file.path(data.dir,"2025-Enquete occupation-MISTEA-20250709.xlsx")
+conso_path <- file.path(data.dir,"Synthèse evolutions Consommations  10-02-2025.xlsx")
 #test standardization
 
 # Import des différentes feuilles
@@ -56,8 +53,8 @@ myconso_parunite         <- result$myconso_parunite
 myconso_parbatunite      <- result$myconso_parbatunite
 
 # Write Excel files
-agg_path <- file.path(paste0(project.dir, "/Results/Test_2025_export_aggregation_energies_consommees.xlsx"))
-stats_path <- file.path(paste0(project.dir, "/Results/Test_2025_export_stats_energies_consommees.xlsx"))
+agg_path <- file.path(result.dir, "Test_2025_export_aggregation_energies_consommees.xlsx")
+stats_path <- file.path(result.dir, "Test_2025_export_stats_energies_consommees.xlsx")
 
 writexl::write_xlsx(list(
   Elect  = result$myconso_elec2,

@@ -18,11 +18,6 @@ library(ggplot2)
 library(rsconnect)
 
 
-# Validate
-if (!file.exists(project.dir)) {
-  stop(paste("Project directory not found:", project.dir))
-}
-
 # Define subpaths
 data.dir   <- "data"
 script.dir <- "R"
