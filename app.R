@@ -51,11 +51,11 @@ ui <- dashboardPage(
                    style = "text-align:center; font-weight:700; margin-bottom:30px;"),
                 
                 # File inputs
-                fileInput("file_etat",  "Importer : La Gaillarde",
+                fileInput("file_etat",  "Importer : État énergétique des bâtiments",
                           accept = ".xlsx", width = "100%"),
-                fileInput("file_conso", "Importer : Synthèse Consommations",
+                fileInput("file_conso", "Importer : Synthèse des consommations",
                           accept = ".xlsx", width = "100%"),
-                fileInput("file_occup", "Importer : Enquete occupation-MISTEA",
+                fileInput("file_occup", "Importer : Enquête occupation",
                           accept = ".xlsx", width = "100%"),
                 br(),
                 
